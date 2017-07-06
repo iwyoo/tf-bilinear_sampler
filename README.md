@@ -7,6 +7,12 @@ Tensorflow implementation of bilinear sampler with vector field
   Args:
     x - Input tensor [N, H, W, C]
     v - Vector flow tensor [N, H, W, 2], tf.float32
+
+    (optional)
+    resize - Whether to resize v as same size as x
+    normalize - Whether to normalize v from scale 1 to H (or W).
+                h : [-1, 1] -> [-H, H]
+                w : [-1, 1] -> [-W, W]
 """
 y = bilinear_sampler(x, v)
 

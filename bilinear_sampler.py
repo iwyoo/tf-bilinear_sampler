@@ -1,11 +1,17 @@
 import tensorflow as tf
 import numpy as np
 
-def bilinear_sampler(x, v):
+def bilinear_sampler(x, v, resize=False, normalize=False):
   """
     Args:
       x - Input tensor [N, H, W, C]
       v - Vector flow tensor [N, H, W, 2], tf.float32
+
+      (optional)
+      resize - Whether to resize v as same size as x
+      normalize - Whether to normalize v from scale 1 to H (or W).
+                  h : [-1, 1] -> [-H, H]
+                  w : [-1, 1] -> [-W, W]
   """
 
   def _get_grid_array(N, H, W):
@@ -23,7 +29,14 @@ def bilinear_sampler(x, v):
   H = shape[1]
   W = shape[2]
 
-  vx, vy = tf.split(v, 2, axis=3)
+  if resize:
+    v = tf.image.resize_bilinear(v, [H, W])
+
+  vy, vx = tf.split(v, 2, axis=3)
+  if normalize :
+    vy *= H 
+    vx *= w 
+
   vx0 = tf.floor(vx)
   vy0 = tf.floor(vy)
   vx1 = vx0 + 1
