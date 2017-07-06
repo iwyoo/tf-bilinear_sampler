@@ -35,7 +35,7 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
   vy, vx = tf.split(v, 2, axis=3)
   if normalize :
     vy *= H 
-    vx *= w 
+    vx *= W 
 
   vx0 = tf.floor(vx)
   vy0 = tf.floor(vy)
