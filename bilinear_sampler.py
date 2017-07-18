@@ -30,9 +30,9 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
   W = shape[2]
 
   if resize:
-    try :
+    if callable(resize) :
       v = resize(v, [H, W])
-    except :
+    else :
       v = tf.image.resize_bilinear(v, [H, W])
 
   vy, vx = tf.split(v, 2, axis=3)
