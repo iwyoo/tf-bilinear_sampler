@@ -10,8 +10,8 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
       (optional)
       resize - Whether to resize v as same size as x
       normalize - Whether to normalize v from scale 1 to H (or W).
-                  h : [-1, 1] -> [-H, H]
-                  w : [-1, 1] -> [-W, W]
+                  h : [-1, 1] -> [-H/2, H/2]
+                  w : [-1, 1] -> [-W/2, W/2]
   """
 
   def _get_grid_array(N, H, W):
@@ -37,8 +37,8 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
 
   vy, vx = tf.split(v, 2, axis=3)
   if normalize :
-    vy *= H 
-    vx *= W 
+    vy *= (H / 2)
+    vx *= (W / 2)
 
   vx0 = tf.floor(vx)
   vy0 = tf.floor(vy)
