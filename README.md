@@ -13,6 +13,7 @@ Tensorflow implementation of bilinear sampler with vector field
     normalize - Whether to normalize v from scale 1 to H (or W).
                 h : [-1, 1] -> [-H, H]
                 w : [-1, 1] -> [-W, W]
+    crop - Set the region to sample. 4-d list [h0, h1, w0, w1]
 """
 y = bilinear_sampler(x, v)
 

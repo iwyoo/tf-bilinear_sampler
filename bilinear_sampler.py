@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-def bilinear_sampler(x, v, resize=False, normalize=False):
+def bilinear_sampler(x, v, resize=False, normalize=False, crop=None):
   """
     Args:
       x - Input tensor [N, H, W, C]
@@ -12,12 +12,13 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
       normalize - Whether to normalize v from scale 1 to H (or W).
                   h : [-1, 1] -> [-H/2, H/2]
                   w : [-1, 1] -> [-W/2, W/2]
+      crop - Set the region to sample. 4-d list [h0, h1, w0, w1]
   """
 
-  def _get_grid_array(N, H, W):
+  def _get_grid_array(N, H, W, h, w):
     N_i = np.arange(N)
-    H_i = np.arange(H)
-    W_i = np.arange(W)
+    H_i = np.arange(h, h+H)
+    W_i = np.arange(w, w+W)
     n, h, w, = np.meshgrid(N_i, H_i, W_i, indexing='ij')
     n = np.expand_dims(n, axis=3)
     h = np.expand_dims(h, axis=3)
@@ -26,8 +27,15 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
 
   shape = x.get_shape().as_list() # Should it be fixed size ?
   N = shape[0]
-  H = shape[1]
-  W = shape[2]
+  if crop is None: 
+    H = shape[1]
+    W = shape[2]
+    h = w = 0
+  else :
+    H = crop[1] - crop[0]
+    W = crop[3] - crop[2]
+    h = crop[0]
+    w = crop[2]
 
   if resize:
     if callable(resize) :
@@ -56,7 +64,7 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
   v10 = tf.pad(v10, padding, mode='CONSTANT')
   v11 = tf.pad(v11, padding, mode='CONSTANT') # [N, H, W, 3]
 
-  idx = _get_grid_array(N, H, W) # [N, H, W, 3]
+  idx = _get_grid_array(N, H, W, h, w) # [N, H, W, 3]
   idx00 = tf.cast(v00 + idx, tf.int32)
   idx01 = tf.cast(v01 + idx, tf.int32)
   idx10 = tf.cast(v10 + idx, tf.int32)
