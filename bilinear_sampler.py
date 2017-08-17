@@ -45,10 +45,10 @@ def bilinear_sampler(x, v, resize=False, normalize=False):
   vx1 = vx0 + 1
   vy1 = vy0 + 1 # [N, H, W, 1]
 
-  v00 = tf.concat([vx0, vy0], 3)
-  v01 = tf.concat([vx0, vy1], 3)
-  v10 = tf.concat([vx1, vy0], 3)
-  v11 = tf.concat([vx1, vy1], 3) # [N, H, W, 2]
+  v00 = tf.concat([vy0, vx0], 3)
+  v01 = tf.concat([vy0, vx1], 3)
+  v10 = tf.concat([vy1, vx0], 3)
+  v11 = tf.concat([vy1, vx1], 3) # [N, H, W, 2]
 
   padding = [[0, 0], [0, 0], [0, 0], [1, 0]]
   v00 = tf.pad(v00, padding, mode='CONSTANT')
