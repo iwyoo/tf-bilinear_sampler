@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-def bilinear_sampler(x, v, resize=False, normalize=False, crop=None):
+def bilinear_sampler(x, v, resize=False, normalize=False, crop=None, out="CONSTANT"):
   """
     Args:
       x - Input tensor [N, H, W, C]
@@ -12,26 +12,31 @@ def bilinear_sampler(x, v, resize=False, normalize=False, crop=None):
       normalize - Whether to normalize v from scale 1 to H (or W).
                   h : [-1, 1] -> [-H/2, H/2]
                   w : [-1, 1] -> [-W/2, W/2]
-      crop - Set the region to sample. 4-d list [h0, h1, w0, w1]
+      crop - Setting the region to sample. 4-d list [h0, h1, w0, w1]
+      out  - Handling out of boundary value.
+             Zero value is used if out="CONSTANT".
+             Boundary values are used if out="EDGE".
   """
 
   def _get_grid_array(N, H, W, h, w):
     N_i = np.arange(N)
-    H_i = np.arange(h, h+H)
-    W_i = np.arange(w, w+W)
+    H_i = np.arange(h+1, h+H+1)
+    W_i = np.arange(w+1, w+W+1)
     n, h, w, = np.meshgrid(N_i, H_i, W_i, indexing='ij')
-    n = np.expand_dims(n, axis=3)
-    h = np.expand_dims(h, axis=3)
-    w = np.expand_dims(w, axis=3)
-    return np.concatenate([n, h, w], axis=3)
+    n = np.expand_dims(n, axis=3) # [N, H, W, 1]
+    h = np.expand_dims(h, axis=3) # [N, H, W, 1]
+    w = np.expand_dims(w, axis=3) # [N, H, W, 1]
+    return n, h, w
 
   shape = x.get_shape().as_list() # Should it be fixed size ?
   N = shape[0]
-  if crop is None: 
-    H = shape[1]
-    W = shape[2]
+  if crop is None:
+    H_ = H = shape[1]
+    W_ = W = shape[2]
     h = w = 0
   else :
+    H_ = shape[1]
+    W_ = shape[2]
     H = crop[1] - crop[0]
     W = crop[3] - crop[2]
     h = crop[0]
@@ -43,38 +48,42 @@ def bilinear_sampler(x, v, resize=False, normalize=False, crop=None):
     else :
       v = tf.image.resize_bilinear(v, [H, W])
 
+  if out == "CONSTANT":
+    x = tf.pad(x,
+      ((0,0), (1,1), (1,1), (0,0)), mode='CONSTANT')
+  elif out == "EDGE":
+    x = tf.pad(x,
+      ((0,0), (1,1), (1,1), (0,0)), mode='REFLECT')
+
   vy, vx = tf.split(v, 2, axis=3)
   if normalize :
     vy *= (H / 2)
     vx *= (W / 2)
+
+  n, h, w = _get_grid_array(N, H, W, h, w) # [N, H, W, 3]
 
   vx0 = tf.floor(vx)
   vy0 = tf.floor(vy)
   vx1 = vx0 + 1
   vy1 = vy0 + 1 # [N, H, W, 1]
 
-  v00 = tf.concat([vy0, vx0], 3)
-  v01 = tf.concat([vy1, vx0], 3)
-  v10 = tf.concat([vy0, vx1], 3)
-  v11 = tf.concat([vy1, vx1], 3) # [N, H, W, 2]
+  iy0 = tf.clip_by_value(vy0 + h, 0., H_+1)
+  iy1 = tf.clip_by_value(vy1 + h, 0., H_+1)
+  ix0 = tf.clip_by_value(vx0 + w, 0., W_+1)
+  ix1 = tf.clip_by_value(vx1 + w, 0., W_+1)
+  i00 = tf.concat([n, iy0, ix0], 3)
+  i01 = tf.concat([n, iy1, ix0], 3)
+  i10 = tf.concat([n, iy0, ix1], 3)
+  i11 = tf.concat([n, iy1, ix1], 3) # [N, H, W, 3]
+  i00 = tf.cast(i00, tf.int32)
+  i01 = tf.cast(i01, tf.int32)
+  i10 = tf.cast(i10, tf.int32)
+  i11 = tf.cast(i11, tf.int32)
 
-  padding = [[0, 0], [0, 0], [0, 0], [1, 0]]
-  v00 = tf.pad(v00, padding, mode='CONSTANT')
-  v01 = tf.pad(v01, padding, mode='CONSTANT')
-  v10 = tf.pad(v10, padding, mode='CONSTANT')
-  v11 = tf.pad(v11, padding, mode='CONSTANT') # [N, H, W, 3]
-
-  idx = _get_grid_array(N, H, W, h, w) # [N, H, W, 3]
-  idx00 = tf.cast(v00 + idx, tf.int32)
-  idx01 = tf.cast(v01 + idx, tf.int32)
-  idx10 = tf.cast(v10 + idx, tf.int32)
-  idx11 = tf.cast(v11 + idx, tf.int32)
-
-  x00 = tf.gather_nd(x, idx00)
-  x01 = tf.gather_nd(x, idx01)
-  x10 = tf.gather_nd(x, idx10)
-  x11 = tf.gather_nd(x, idx11)
-
+  x00 = tf.gather_nd(x, i00)
+  x01 = tf.gather_nd(x, i01)
+  x10 = tf.gather_nd(x, i10)
+  x11 = tf.gather_nd(x, i11)
   w00 = tf.cast((vx1 - vx) * (vy1 - vy), tf.float32)
   w01 = tf.cast((vx1 - vx) * (vy - vy0), tf.float32)
   w10 = tf.cast((vx - vx0) * (vy1 - vy), tf.float32)
