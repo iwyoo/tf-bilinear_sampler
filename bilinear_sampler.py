@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 
 def bilinear_sampler(x, v, resize=False, normalize=False, crop=None, out="CONSTANT"):
   """
