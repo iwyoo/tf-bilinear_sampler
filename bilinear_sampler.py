@@ -60,8 +60,8 @@ def bilinear_sampler(x, v, resize=False, normalize=False, crop=None, out="CONSTA
 
   vy, vx = tf.split(v, 2, axis=3)
   if normalize :
-    vy *= (H / 2)
-    vx *= (W / 2)
+    vy *= tf.cast(H / 2, tf.float32)
+    vx *= tf.cast(W / 2, tf.float32)
 
   n, h, w = _get_grid_array(N, H, W, h, w) # [N, H, W, 3]
 
